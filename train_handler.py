@@ -141,6 +141,35 @@ def build_train_dataset(style_id: str, style_dir: str, train_dir: str):
     return font_dir, len(ref_entries)
 
 
+def prepare_base_checkpoint(src_path: str, variant: str) -> str:
+    """把 zi2zi-JiT 预训练 checkpoint 转成 lora_single_gpu_finetune_jit.py 能接受的格式。
+
+    上游训练脚本只识别 dict 里的 'model' 键；而公开预训练权重通常只有
+    'model_ema1' / 'model_ema2' / 'args'。这里把它们统一存成 'model' 键，
+    并把 args 也附进去，供脚本读取 lora_r/alpha 等元数据。
+    """
+    if not os.path.isfile(src_path):
+        raise FileNotFoundError(f"底座权重不存在: {src_path}")
+
+    tmp_path = f"/tmp/zi2zi-base-{variant}.pth"
+    if os.path.isfile(tmp_path):
+        return tmp_path
+
+    print(f"[train] 准备底座 checkpoint: {src_path} -> {tmp_path}")
+    checkpoint = torch.load(src_path, map_location="cpu", weights_only=False)
+    out = {"args": checkpoint.get("args")}
+    for key in ("model_ema1", "model_ema2", "model"):
+        if key in checkpoint:
+            out["model"] = checkpoint[key]
+            break
+    if "model" not in out or out["model"] is None:
+        # 兜底：整个 checkpoint 本身就是 state_dict
+        out["model"] = checkpoint
+    torch.save(out, tmp_path)
+    print(f"[train] 底座 checkpoint 已准备，state_dict keys 样例: {list(out['model'].keys())[:5]}")
+    return tmp_path
+
+
 def run_training(style_id: str, variant: str, base_checkpoint: str, epochs: int,
                  lora_r: int, lora_alpha: int, lora_dropout: float, batch_size: int):
     style_dir = os.path.join(WEIGHTS_ROOT, "styles", style_id)
@@ -154,6 +183,9 @@ def run_training(style_id: str, variant: str, base_checkpoint: str, epochs: int,
     if not os.path.isfile(base_checkpoint):
         raise FileNotFoundError(f"底座权重不存在: {base_checkpoint}")
 
+    # 为上游脚本准备格式兼容的底座权重
+    base_ckpt_for_train = prepare_base_checkpoint(base_checkpoint, variant)
+
     output_dir = os.path.join(WEIGHTS_ROOT, "loras", style_id)
     os.makedirs(output_dir, exist_ok=True)
 
@@ -162,7 +194,7 @@ def run_training(style_id: str, variant: str, base_checkpoint: str, epochs: int,
         sys.executable, TRAIN_SCRIPT,
         "--data_path", train_dir,
         "--output_dir", output_dir,
-        "--base_checkpoint", base_checkpoint,
+        "--base_checkpoint", base_ckpt_for_train,
         "--model", f"JiT-{variant}/16",
         "--epochs", str(epochs),
         "--lora_r", str(lora_r),

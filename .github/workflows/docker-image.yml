@@ -23,7 +23,6 @@ jobs:
 
       - name: Free disk space
         run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc || true
           df -h /
 
       - name: Set up QEMU
@@ -62,7 +61,6 @@ jobs:
 
       - name: Free disk space
         run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc || true
           df -h /
 
       - name: Set up QEMU

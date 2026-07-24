@@ -7,6 +7,6 @@ einops==0.8.1
 gdown==5.2.0
 fonttools
 Pillow
-torch-fidelity
+torch-fidelity==0.3.0
 tqdm
 scipy>=1.11

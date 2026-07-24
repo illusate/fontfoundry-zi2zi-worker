@@ -256,7 +256,9 @@ def handler(event):
             keys = list(checkpoint.keys())
             args = checkpoint.get("args")
             args_dict = {k: str(v) for k, v in vars(args).items()} if args else None
-            return {"debug": True, "checkpoint_keys": keys, "checkpoint_args": args_dict}
+            sd = checkpoint.get("model_ema1") or checkpoint.get("model") or checkpoint
+            sd_keys = list(sd.keys())[:10] if isinstance(sd, dict) else ["not-a-dict"]
+            return {"debug": True, "checkpoint_keys": keys, "checkpoint_args": args_dict, "state_dict_sample": sd_keys}
         except Exception as e:
             return {"debug": True, "error": str(e)}
 

@@ -2,7 +2,7 @@
 # 此处只补 LoRA 微调所需的最小依赖
 runpod>=1.7
 opencv-python==4.11.0.86
-tensorboard==2.10.0
+tensorboard>=2.16,<2.18
 einops==0.8.1
 gdown==5.2.0
 fonttools

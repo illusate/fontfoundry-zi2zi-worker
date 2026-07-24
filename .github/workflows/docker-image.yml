@@ -42,8 +42,9 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64
-          push: true
           tags: illusate/fontfoundry-zi2zi:latest
           provenance: false
+          sbom: false
+          outputs: type=image,oci-mediatypes=false,push=true
           cache-from: type=gha
           cache-to: type=gha,mode=max

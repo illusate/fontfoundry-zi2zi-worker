@@ -245,6 +245,21 @@ def synthesize(model: Denoiser, device: torch.device, ch: str,
 
 def handler(event):
     inp = event.get("input", {}) or {}
+
+    # 调试模式：返回 checkpoint 的元信息，便于排查模型参数
+    if inp.get("debug"):
+        variant = str(inp.get("variant", DEFAULT_VARIANT)).upper()
+        weight_name = f"zi2zi-JiT-{variant}-16.pth"
+        checkpoint_path = os.path.join(WEIGHTS_ROOT, weight_name)
+        try:
+            checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+            keys = list(checkpoint.keys())
+            args = checkpoint.get("args")
+            args_dict = {k: str(v) for k, v in vars(args).items()} if args else None
+            return {"debug": True, "checkpoint_keys": keys, "checkpoint_args": args_dict}
+        except Exception as e:
+            return {"debug": True, "error": str(e)}
+
     chars = list(dict.fromkeys(inp.get("chars", [])))[:200]  # 去重且限制 200 字
     style_id = inp.get("style_id", "")
     size = int(inp.get("size", 256))

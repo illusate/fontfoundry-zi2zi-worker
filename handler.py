@@ -264,17 +264,21 @@ def handler(event):
 
     chars = list(dict.fromkeys(inp.get("chars", [])))[:200]  # 去重且限制 200 字
     style_id = inp.get("style_id", "")
-    size = int(inp.get("size", 256))
-    variant = str(inp.get("variant", DEFAULT_VARIANT)).upper()
+    size_raw = inp.get("size")
+    size = int(size_raw if size_raw is not None else 256)
+    variant = str(inp.get("variant") or DEFAULT_VARIANT).upper()
     if variant not in ("B", "L"):
         variant = DEFAULT_VARIANT
 
-    method = str(inp.get("sampling_method", "ab2")).lower()
+    method = str(inp.get("sampling_method") or "ab2").lower()
     if method not in ("euler", "heun", "ab2"):
         method = "ab2"
 
-    cfg = float(inp.get("cfg", DEFAULT_CFG.get(variant, 2.6)))
-    steps = int(inp.get("steps", DEFAULT_STEPS.get(method, 20)))
+    cfg_raw = inp.get("cfg")
+    cfg = float(cfg_raw if cfg_raw is not None else DEFAULT_CFG.get(variant, 2.6))
+
+    steps_raw = inp.get("steps")
+    steps = int(steps_raw if steps_raw is not None else DEFAULT_STEPS.get(method, 20))
 
     if not chars:
         return {"error": "chars 不能为空"}

@@ -1,0 +1,12 @@
+# 基础镜像 runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04 已含 torch 2.4.0+cu124
+# 此处只补 LoRA 微调所需的最小依赖
+runpod>=1.7
+opencv-python==4.11.0.86
+tensorboard==2.10.0
+einops==0.8.1
+gdown==5.2.0
+fonttools
+Pillow
+torch-fidelity
+tqdm
+scipy>=1.11

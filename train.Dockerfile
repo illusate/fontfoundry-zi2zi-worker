@@ -13,11 +13,8 @@ RUN mkdir -p /app/fonts \
     || cp /usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc /app/fonts/source.ttf 2>/dev/null \
     || echo "WARNING: built-in source font not found"
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-RUN pip install --no-cache-dir git+https://ghfast.top/https://github.com/kaonashi-tyc/zi2zi-JiT.git 2>/dev/null \
-    || pip install --no-cache-dir git+https://github.com/kaonashi-tyc/zi2zi-JiT.git
+COPY requirements.train.txt .
+RUN pip install --no-cache-dir -r requirements.train.txt
 
 RUN git clone --depth 1 https://ghfast.top/https://github.com/kaonashi-tyc/zi2zi-JiT.git /app/zi2zi-jit 2>/dev/null \
     || git clone --depth 1 https://github.com/kaonashi-tyc/zi2zi-JiT.git /app/zi2zi-jit

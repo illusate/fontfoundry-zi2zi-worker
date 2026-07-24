@@ -6,6 +6,7 @@
   input: {
     "chars": ["字", "库", ...],          # 本批要生成的字符（建议 ≤ 60 个/批）
     "style_id": "default",                # 风格标识 → 对应网络卷 styles/ 目录
+    "style_refs": ["<base64 PNG>", ...],  # 可选：内联风格参考图，优先于网络卷
     "size": 256,                          # 输出位图边长（固定 256，与 zi2zi-JiT 训练一致）
     "variant": "B",                       # 模型变体："B" 或 "L"
     "cfg": 2.6,                           # Classifier-free guidance（B 推荐 2.6，L 推荐 2.4）
@@ -182,8 +183,27 @@ def render_source_char(ch: str, font_path: str, size: int = 256) -> np.ndarray:
     return np.array(img)  # (H, W, 3) uint8
 
 
-def load_style_refs(style_id: str, max_refs: int = 8) -> List[Image.Image]:
-    """从网络卷加载风格参考图"""
+def load_style_refs(style_id: str, inline_refs=None, max_refs: int = 8) -> List[Image.Image]:
+    """加载风格参考图。优先使用内联 base64，否则读网络卷 styles/ 目录。"""
+    if inline_refs:
+        refs = []
+        for idx, r in enumerate(inline_refs[:max_refs]):
+            try:
+                b64 = r.get("png") if isinstance(r, dict) else r
+                if not b64:
+                    continue
+                img = Image.open(io.BytesIO(base64.b64decode(b64))).convert("RGB")
+                refs.append(img)
+            except Exception as e:
+                print(f"[warn] 内联风格图 #{idx} 解码失败: {e}")
+        if refs and style_id:
+            # 回写到 Network Volume 做缓存，后续请求可直接复用
+            style_dir = os.path.join(WEIGHTS_ROOT, "styles", style_id)
+            os.makedirs(style_dir, exist_ok=True)
+            for i, img in enumerate(refs):
+                img.save(os.path.join(style_dir, f"inline_{i:03d}.png"), "PNG")
+        return refs
+
     style_dir = os.path.join(WEIGHTS_ROOT, "styles", style_id or "default")
     if not os.path.isdir(style_dir):
         return []
@@ -291,7 +311,8 @@ def handler(event):
         model, device = load_model(cfg_obj)
         load_lora_for_style(model, style_id)
 
-        style_refs = load_style_refs(style_id)
+        inline_refs = inp.get("style_refs")
+        style_refs = load_style_refs(style_id, inline_refs=inline_refs)
         style_arr = prepare_style_image(style_refs, size=128)
 
         glyphs, failed = [], []

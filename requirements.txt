@@ -4,7 +4,7 @@ runpod>=1.7
 opencv-python==4.11.0.86
 timm==0.9.12
 tensorboard==2.10.0
-scipy==1.9.1
+scipy>=1.11
 einops==0.8.1
 gdown==5.2.0
 fonttools

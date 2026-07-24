@@ -1,0 +1,7 @@
+# Minimal runtime dependencies for the zi2zi-JiT inference worker.
+# Base image runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04 already ships torch+cu124.
+runpod>=1.7
+einops==0.8.1
+fonttools
+Pillow
+tqdm

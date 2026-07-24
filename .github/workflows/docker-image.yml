@@ -10,6 +10,7 @@ on:
       - train_handler.py
       - requirements.inference.txt
       - requirements.txt
+      - requirements.train.txt
       - .github/workflows/docker-image.yml
   workflow_dispatch:
 

@@ -46,7 +46,9 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64
-          tags: illusate/fontfoundry-zi2zi:latest
+          tags: |
+            illusate/fontfoundry-zi2zi:latest
+            illusate/fontfoundry-zi2zi:sha-${{ github.sha }}
           provenance: false
           sbom: false
           outputs: type=image,oci-mediatypes=false,push=true
@@ -55,6 +57,7 @@ jobs:
 
   build-train:
     name: Training worker
+    needs: build
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -84,7 +87,9 @@ jobs:
           context: .
           file: ./train.Dockerfile
           platforms: linux/amd64
-          tags: illusate/fontfoundry-zi2zi-train:latest
+          tags: |
+            illusate/fontfoundry-zi2zi-train:latest
+            illusate/fontfoundry-zi2zi-train:sha-${{ github.sha }}
           provenance: false
           sbom: false
           outputs: type=image,oci-mediatypes=false,push=true

@@ -15,6 +15,8 @@
 响应契约:
   output: { "ok": true, "lora_dir": "...", "message": "..." }
 """
+import base64
+import io
 import os
 import shutil
 import subprocess
@@ -46,6 +48,35 @@ def _char_from_filename(fn: str) -> str:
         except ValueError:
             pass
     return stem
+
+
+def write_inline_style_images(style_id: str, glyph_images):
+    """把内联 base64 参考图写入网络卷 styles/ 目录。"""
+    style_dir = os.path.join(WEIGHTS_ROOT, "styles", style_id)
+    os.makedirs(style_dir, exist_ok=True)
+    # 清空旧文件，确保训练只用了本次传入的图
+    for fn in os.listdir(style_dir):
+        fp = os.path.join(style_dir, fn)
+        if os.path.isfile(fp):
+            os.remove(fp)
+    saved = 0
+    for idx, g in enumerate(glyph_images):
+        ch = g.get("char", "")
+        b64 = g.get("png") or g.get("image", "")
+        if not b64 or not ch:
+            continue
+        try:
+            img = Image.open(io.BytesIO(base64.b64decode(b64))).convert("RGB")
+            codepoint = f"U+{ord(ch):04X}"
+            out_path = os.path.join(style_dir, f"{idx:05d}_{codepoint}.png")
+            img.save(out_path, "PNG")
+            saved += 1
+        except Exception as e:
+            print(f"[warn] 内联图 #{idx} ({ch}) 写入失败: {e}")
+    if saved == 0:
+        raise ValueError("没有成功写入任何内联参考图")
+    print(f"[train] 已写入 {saved} 张内联参考图到 {style_dir}")
+    return style_dir, saved
 
 
 def render_source_char(ch: str, font_path: str, size: int = IMG_SIZE) -> Image.Image:
@@ -180,6 +211,10 @@ def handler(event):
     batch_size = int(inp.get("batch_size", 8))
 
     try:
+        glyph_images = inp.get("glyph_images")
+        if glyph_images:
+            write_inline_style_images(style_id, glyph_images)
+
         output_dir, n_samples = run_training(
             style_id, variant, base_checkpoint, epochs,
             lora_r, lora_alpha, lora_dropout, batch_size,

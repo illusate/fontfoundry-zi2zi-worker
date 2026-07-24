@@ -166,7 +166,7 @@ def load_lora_for_style(model: Denoiser, style_id: str):
 # ---------------------------------------------------------------- 图像预处理
 
 def render_source_char(ch: str, font_path: str, size: int = 256) -> np.ndarray:
-    """把字符渲染成白字黑底 256x256 RGB 内容图"""
+    """把字符渲染成黑字白底 256x256 RGB 内容图（与训练时一致）"""
     if not os.path.isfile(font_path):
         raise FileNotFoundError(f"源字体不存在: {font_path}")
 
@@ -176,9 +176,9 @@ def render_source_char(ch: str, font_path: str, size: int = 256) -> np.ndarray:
     except Exception as e:
         raise RuntimeError(f"无法加载源字体 {font_path}: {e}")
 
-    img = Image.new("RGB", (size, size), (0, 0, 0))
+    img = Image.new("RGB", (size, size), (255, 255, 255))
     draw = ImageDraw.Draw(img)
-    draw.text((size // 2, size // 2), ch, fill=(255, 255, 255), font=font, anchor="mm")
+    draw.text((size // 2, size // 2), ch, fill=(0, 0, 0), font=font, anchor="mm")
     return np.array(img)  # (H, W, 3) uint8
 
 

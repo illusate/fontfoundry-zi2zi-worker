@@ -23,8 +23,10 @@ jobs:
 
       - name: Free disk space
         run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc || true
+          sudo apt-get clean || true
           docker system prune -af || true
+          df -h /
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -62,8 +64,10 @@ jobs:
 
       - name: Free disk space
         run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc || true
+          sudo apt-get clean || true
           docker system prune -af || true
+          df -h /
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3

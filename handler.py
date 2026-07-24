@@ -316,8 +316,7 @@ def handler(event):
 
     try:
         cfg_obj = GenConfig(variant=variant, cfg=cfg, steps=steps, method=method)
-        model, device = load_model(cfg_obj)
-        load_lora_for_style(model, style_id)
+        model, device = load_model(cfg_obj, style_id)
 
         inline_refs = inp.get("style_refs")
         style_refs = load_style_refs(style_id, inline_refs=inline_refs)

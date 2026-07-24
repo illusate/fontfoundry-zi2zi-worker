@@ -94,9 +94,9 @@ def variant_args(variant: str, cfg: float, steps: int, method: str):
     return args
 
 
-def load_model(cfg: GenConfig) -> Tuple[Denoiser, torch.device]:
-    """懒加载模型；按 (variant, style_id) 缓存，无 LoRA 时 style_id 不影响权重"""
-    cache_key = cfg.variant
+def load_model(cfg: GenConfig, style_id: str = "") -> Tuple[Denoiser, torch.device]:
+    """懒加载模型；按 (variant, style_id) 缓存，避免不同风格 LoRA 互相覆盖。"""
+    cache_key = f"{cfg.variant}:{style_id}"
     if cache_key in _model_cache:
         return _model_cache[cache_key]
 
@@ -117,6 +117,18 @@ def load_model(cfg: GenConfig) -> Tuple[Denoiser, torch.device]:
     model = Denoiser(ckpt_args)
     state_dict = checkpoint.get("model_ema1") or checkpoint.get("model") or checkpoint
 
+    # 若存在风格 LoRA，先注入 LoRA 结构再加载底座权重 + LoRA 权重
+    lora_path = os.path.join(WEIGHTS_ROOT, "loras", style_id, "checkpoint-last.pth") if style_id else ""
+    if style_id and os.path.isfile(lora_path):
+        print(f"[worker] 检测到风格 LoRA，预先注入 LoRA 结构: {lora_path}")
+        lora_ckpt = torch.load(lora_path, map_location="cpu", weights_only=False)
+        lora_args = lora_ckpt.get("args") or ckpt_args
+        lora_r = getattr(lora_args, "lora_r", getattr(ckpt_args, "lora_r", 32))
+        lora_alpha = getattr(lora_args, "lora_alpha", getattr(ckpt_args, "lora_alpha", 32))
+        lora_dropout = getattr(lora_args, "lora_dropout", getattr(ckpt_args, "lora_dropout", 0.0))
+        lora_targets = getattr(lora_args, "lora_targets", "qkv,proj,w12,w3").split(",")
+        inject_lora(model.net, lora_targets, r=lora_r, alpha=lora_alpha, dropout=lora_dropout)
+
     is_lora = _is_lora_state_dict(state_dict)
     if is_lora:
         lora_r = getattr(ckpt_args, "lora_r", 8)
@@ -128,6 +140,16 @@ def load_model(cfg: GenConfig) -> Tuple[Denoiser, torch.device]:
     missing, unexpected = model.load_state_dict(state_dict, strict=False)
     if missing or unexpected:
         print(f"[worker] load_state_dict warning: missing={len(missing)}, unexpected={len(unexpected)}")
+
+    # 若预注入过 LoRA 结构，再加载 LoRA 权重
+    if style_id and os.path.isfile(lora_path):
+        lora_ckpt = torch.load(lora_path, map_location="cpu", weights_only=False)
+        lora_state = lora_ckpt.get("model") or lora_ckpt
+        if _is_lora_state_dict(lora_state):
+            missing2, unexpected2 = model.load_state_dict(lora_state, strict=False)
+            print(f"[worker] LoRA loaded: missing={len(missing2)}, unexpected={len(unexpected2)}")
+        else:
+            print(f"[worker] Warning: {lora_path} 不是 LoRA 权重，跳过")
 
     # 覆盖生成超参
     model.cfg_scale = cfg.cfg
@@ -141,27 +163,6 @@ def load_model(cfg: GenConfig) -> Tuple[Denoiser, torch.device]:
     _model_cache[cache_key] = (model, device)
     print(f"[worker] Model {cfg.variant} loaded, params={sum(p.numel() for p in model.parameters()):,}")
     return model, device
-
-
-def load_lora_for_style(model: Denoiser, style_id: str):
-    """若存在该风格的 LoRA，加载到已缓存模型上（会修改缓存中的模型）。"""
-    if not style_id:
-        return
-    lora_dir = os.path.join(WEIGHTS_ROOT, "loras", style_id)
-    lora_path = os.path.join(lora_dir, "checkpoint-last.pth")
-    if not os.path.isfile(lora_path):
-        return
-
-    print(f"[worker] Loading LoRA for style '{style_id}': {lora_path}")
-    checkpoint = torch.load(lora_path, map_location="cpu", weights_only=False)
-    state_dict = checkpoint.get("model") or checkpoint
-    if not _is_lora_state_dict(state_dict):
-        print(f"[worker] Warning: {lora_path} 不是 LoRA 权重，跳过")
-        return
-
-    # 已注入 LoRA 的模型直接加载即可
-    missing, unexpected = model.load_state_dict(state_dict, strict=False)
-    print(f"[worker] LoRA loaded: missing={len(missing)}, unexpected={len(unexpected)}")
 
 
 # ---------------------------------------------------------------- 图像预处理

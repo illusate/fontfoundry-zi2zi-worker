@@ -40,13 +40,22 @@ REF_SIZE = 128
 
 
 def _char_from_filename(fn: str) -> str:
-    """从 永.png / U+6C38.png 等文件名还原字符"""
+    """从 永.png / U+6C38.png / 00000_U+6C38.png 等文件名还原字符"""
     stem = Path(fn).stem
-    if stem.startswith("U+") and len(stem) > 2:
-        try:
-            return chr(int(stem[2:], 16))
-        except ValueError:
-            pass
+    # 支持带序号前缀的文件名，如 00000_U+6C38
+    for part in stem.split("_"):
+        if part.startswith("U+") and len(part) > 2:
+            try:
+                return chr(int(part[2:], 16))
+            except ValueError:
+                pass
+    # 兜底：若整个 stem 是一个字符则直接返回
+    if len(stem) == 1:
+        return stem
+    # 最后尝试最后一段
+    last = stem.split("_")[-1]
+    if len(last) == 1:
+        return last
     return stem
 
 

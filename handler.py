@@ -46,17 +46,18 @@ DEFAULT_CFG = {"B": 2.6, "L": 2.4}
 DEFAULT_STEPS = {"ab2": 20, "euler": 20, "heun": 50}
 
 # zi2zi-JiT 预训练底座参数（num_fonts/num_chars 必须与底座一致）
+# 官方预训练权重使用 1000 fonts / 20000 chars（见 README 的 LoRA 示例）
 BASE_ARGS = {
     "img_size": 256,
     "class_num": 1000,
-    "num_fonts": 100,
-    "num_chars": 500,
+    "num_fonts": 1000,
+    "num_chars": 20000,
     "attn_dropout": 0.0,
     "proj_dropout": 0.0,
     "label_drop_prob": 0.1,
-    "P_mean": -1.2,
-    "P_std": 1.2,
-    "t_eps": 1e-6,
+    "P_mean": -0.8,
+    "P_std": 0.8,
+    "t_eps": 5e-2,
     "noise_scale": 1.0,
     "ema_decay1": 0.9999,
     "ema_decay2": 0.99999,

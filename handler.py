@@ -218,14 +218,21 @@ def load_style_refs(style_id: str, inline_refs=None, max_refs: int = 8) -> List[
     return refs
 
 
+def ensure_black_on_white(arr: np.ndarray) -> np.ndarray:
+    """若输入为白字黑底（平均灰度偏低），则反色为黑字白底。"""
+    if float(arr.mean()) < 128.0:
+        return 255 - arr
+    return arr
+
+
 def prepare_style_image(refs: List[Image.Image], size: int = 128) -> np.ndarray:
-    """把参考图拼成 128x128 RGB；无参考时返回白底"""
+    """把参考图拼成 128x128 RGB；自动校正为黑字白底。"""
     if refs:
         # 简单策略：取第一张并 resize；后续可改进为随机/平均
         img = refs[0].resize((size, size), Image.LANCZOS)
     else:
         img = Image.new("RGB", (size, size), (255, 255, 255))
-    return np.array(img)
+    return ensure_black_on_white(np.array(img))
 
 
 def normalize_image(arr: np.ndarray) -> np.ndarray:

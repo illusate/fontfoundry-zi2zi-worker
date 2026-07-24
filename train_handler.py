@@ -24,6 +24,7 @@ import sys
 import traceback
 from pathlib import Path
 
+import numpy as np
 import runpod
 import torch
 from PIL import Image, ImageDraw, ImageFont
@@ -89,13 +90,27 @@ def write_inline_style_images(style_id: str, glyph_images):
 
 
 def render_source_char(ch: str, font_path: str, size: int = IMG_SIZE) -> Image.Image:
-    """渲染源字体内容图（白字黑底）"""
+    """渲染源字体内容图（黑字白底，与 zi2zi-JiT 训练数据一致）"""
     if not os.path.isfile(font_path):
         raise FileNotFoundError(f"源字体不存在: {font_path}")
     font = ImageFont.truetype(font_path, int(size * 0.75))
-    img = Image.new("RGB", (size, size), (0, 0, 0))
+    img = Image.new("RGB", (size, size), (255, 255, 255))
     draw = ImageDraw.Draw(img)
-    draw.text((size // 2, size // 2), ch, fill=(255, 255, 255), font=font, anchor="mm")
+    draw.text((size // 2, size // 2), ch, fill=(0, 0, 0), font=font, anchor="mm")
+    return img
+
+
+def ensure_black_on_white(img: Image.Image) -> Image.Image:
+    """统一参考图极性：若图为白字黑底则反色为黑字白底。
+
+    zi2zi-JiT 的训练数据期望笔画为黑（0）、背景为白（255）。
+    用户上传的参考图常见为白字黑底，需要在这里自动校正。
+    """
+    arr = np.array(img.convert("RGB"))
+    # 简单判断：若平均灰度 < 128，说明背景偏黑，需要反色
+    if float(arr.mean()) < 128.0:
+        arr = 255 - arr
+        return Image.fromarray(arr, "RGB")
     return img
 
 
@@ -121,6 +136,9 @@ def build_train_dataset(style_id: str, style_dir: str, train_dir: str):
 
     if len(ref_entries) < 4:
         raise ValueError(f"风格 '{style_id}' 至少需要 4 张参考字图，当前 {len(ref_entries)}")
+
+    # 统一极性为黑字白底，再 resize
+    ref_entries = [(ch, ensure_black_on_white(img)) for ch, img in ref_entries]
 
     # 复用同一张图作为 8 个 ref patch 的候选（训练时会随机抽一个 patch）
     ref_pool = [img.resize((REF_SIZE, REF_SIZE), Image.LANCZOS) for _, img in ref_entries]
